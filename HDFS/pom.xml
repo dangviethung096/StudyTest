@@ -4,7 +4,7 @@
 
   <groupId>viettel</groupId>
   <artifactId>HDFS</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>HDFS</name>
@@ -21,5 +21,52 @@
       <version>3.8.1</version>
       <scope>test</scope>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-common -->
+    <dependency>
+    	<groupId>org.apache.hadoop</groupId>
+    	<artifactId>hadoop-common</artifactId>
+    	<version>3.1.2</version>
+    </dependency>
+  	<!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-assembly-plugin -->
+	<dependency>
+	    <groupId>org.apache.maven.plugins</groupId>
+	    <artifactId>maven-assembly-plugin</artifactId>
+	    <version>3.1.1</version>
+	</dependency>
   </dependencies>
+  <build>
+  	<plugins>
+  		<plugin>
+  			<groupId>org.apache.maven.plugins</groupId>
+  			<artifactId>maven-assembly-plugin</artifactId>
+	        <version>3.1.1</version>
+	        <configuration>
+	          <descriptorRefs>
+	            <descriptorRef>jar-with-dependencies</descriptorRef>
+	          </descriptorRefs>
+	        </configuration>
+	        <executions>
+	          <execution>
+	            <id>make-assembly</id> <!-- this is used for inheritance merges -->
+	            <phase>package</phase> <!-- bind to the packaging phase -->
+	            <goals>
+	              <goal>single</goal>
+	            </goals>
+	          </execution>
+	        </executions>
+  		</plugin>
+  	</plugins>
+  	<pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.8.1</version>
+          <configuration>
+            <!-- put your configurations here -->
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
 </project>
