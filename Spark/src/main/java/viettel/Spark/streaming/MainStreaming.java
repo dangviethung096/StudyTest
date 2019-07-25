@@ -1,21 +1,22 @@
 package viettel.Spark.streaming;
 
-import java.io.IOException;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import java.sql.Timestamp;
+import java.util.UUID;
+
+
+import org.apache.spark.api.java.function.ForeachFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.ForeachWriter;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder;
-import org.apache.spark.sql.streaming.DataStreamWriter;
 import org.apache.spark.sql.streaming.StreamingQuery;
 import org.apache.spark.sql.streaming.StreamingQueryException;
 
-import viettel.Spark.Tables.KafkaTable;
+import viettel.Spark.Cassandra.CassandraAPI;
+import viettel.Spark.DataObjects.HeartRateAvg;
+import viettel.Spark.DataObjects.KafkaObject;
 
 public class MainStreaming {
 	public static void main(String[] args) throws StreamingQueryException {
@@ -31,73 +32,47 @@ public class MainStreaming {
 											
 		df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)");
 		
-		Dataset<KafkaTable> data = df.as(ExpressionEncoder.javaBean(KafkaTable.class));
+		Dataset<KafkaObject> data = df.as(ExpressionEncoder.javaBean(KafkaObject.class));
+		// Convert value to json file
 		
-		DataStreamWriter<KafkaTable> values =  data.writeStream().foreach(new ForeachWriter<KafkaTable>() {
-			
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = 1L;
-			Configuration conf;
-			FileSystem fs;
-			FSDataOutputStream out;
-			Path outputFile;
-			@Override
-			public void process(KafkaTable arg0) {
-				System.out.println("Receive : " + arg0.getValue());
+		
+		
+//		ForeachWriter<KafkaObject> writeToCassandra = new ForeachWriter<KafkaObject>() {
+//			
+//			@Override
+//			public void process(KafkaObject row) {
 //				// TODO Auto-generated method stub
-//				byte[] values = arg0.getValue().getBytes();
+//				System.out.println("Receive value: heartRateAvg = " + row.getValue());
+//				// Set value from kafka object
+//				HeartRateAvg heartRateAvg = new HeartRateAvg();
+//				heartRateAvg.setDay(new Timestamp(row.getTimestamp()));
+//				heartRateAvg.setHeart_rate_avg(Double.parseDouble(row.getValue()));
+//				heartRateAvg.setHeart_rate_max(Double.parseDouble(row.getValue()));
+//				heartRateAvg.setHeart_rate_min(Double.parseDouble(row.getValue()));
+//				heartRateAvg.setId(new UUID(row.getTimestamp(), row.getTimestamp()));
 //				
-//				try {
-//					out.write(values);
-//				} catch (IOException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-			}
-			
-			@Override
-			public boolean open(long arg0, long arg1) {
-				// TODO Auto-generated method stub
-//				System.out.println("Open connection");
-//				conf = new Configuration();
-//				
-//				outputFile = new Path("/home/hdfs/values.txt");
-//				
-//				try {
-//					fs = FileSystem.get(conf);
-//					
-//					if(fs.exists(outputFile)) {
-//						out = fs.append(outputFile);
-//					} else {
-//						out = fs.create(outputFile);
-//					}
-//					
-//				} catch (IOException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//					return false;
-//				}
-				
-				return true;
-			}
-			
-			@Override
-			public void close(Throwable arg0) {
-//				System.out.println("Close");
+//				CassandraAPI.getInstance().insertToDB(heartRateAvg);
+//			}
+//			
+//			@Override
+//			public boolean open(long arg0, long arg1) {
 //				// TODO Auto-generated method stub
-//				try {
-//					out.close();
-//				} catch (IOException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-			}
-		});
+//				return false;
+//			}
+//			
+//			@Override
+//			public void close(Throwable arg0) {
+//				// TODO Auto-generated method stub
+//				
+//			}
+//		};
 		
 		
-		StreamingQuery query = values.start();
+		// Convert to 
+		StreamingQuery query = data.writeStream()
+								   .outputMode("append")
+								   .format("console")
+								   .start();
 		
 		query.awaitTermination();
 	}

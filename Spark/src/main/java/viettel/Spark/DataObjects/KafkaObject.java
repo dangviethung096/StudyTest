@@ -1,6 +1,6 @@
-package viettel.Spark.Tables;
+package viettel.Spark.DataObjects;
 
-public class KafkaTable {
+public class KafkaObject {
 	private String key;
 	private String value;
 	private String topic;

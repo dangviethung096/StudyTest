@@ -45,12 +45,25 @@
 	    <artifactId>hadoop-client</artifactId>
 	    <version>3.1.2</version>
 	</dependency>
+	<!-- https://mvnrepository.com/artifact/com.datastax.oss/java-driver-core -->
+	<dependency>
+	    <groupId>com.datastax.oss</groupId>
+	    <artifactId>java-driver-core</artifactId>
+	    <version>4.1.0</version>
+	</dependency>
+	<!-- https://mvnrepository.com/artifact/com.datastax.cassandra/cassandra-driver-mapping -->
+	<dependency>
+	    <groupId>com.datastax.cassandra</groupId>
+	    <artifactId>cassandra-driver-mapping</artifactId>
+	    <version>3.7.2</version>
+	</dependency>
 	
   </dependencies>
   
   <build>
-  	<plugins>
-  		<plugin>
+  	
+      <plugins>
+      	<plugin>
   			<groupId>org.apache.maven.plugins</groupId>
   			<artifactId>maven-assembly-plugin</artifactId>
 	        <version>3.1.1</version>
@@ -69,20 +82,23 @@
 	          </execution>
 	        </executions>
   		</plugin>
-  	</plugins>
-  	<pluginManagement>
-      <plugins>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.8.1</version>
-          <configuration>
-            <!-- put your configurations here -->
-            <source>1.8</source>
-            <target>1.8</target>
-          </configuration>
-        </plugin>
-      </plugins>
-    </pluginManagement>
+	</plugins>
+	
+	<pluginManagement>
+		<plugins>
+			 <plugin>
+		        <groupId>org.apache.maven.plugins</groupId>
+		        <artifactId>maven-compiler-plugin</artifactId>
+		        <version>3.8.1</version>
+		        <configuration>
+		          <!-- put your configurations here -->
+		         <source>1.8</source>
+		         <target>1.8</target>
+		       </configuration>
+		     </plugin>
+		</plugins>
+	</pluginManagement>
+        
+    
   </build>
 </project>
