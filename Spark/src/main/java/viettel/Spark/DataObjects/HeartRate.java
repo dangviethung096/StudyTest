@@ -32,7 +32,11 @@ public class HeartRate {
 	public void setCurrent_heart_rate(double current_heart_rate) {
 		this.current_heart_rate = current_heart_rate;
 	}
-
+	
+	public String toString() {
+		return "{ id : " + id.toString() + ", time : " + time.getTime() + " , current_heart_rate : " + current_heart_rate + " }";  
+	}
+	
 	public HeartRate() {
 	}
 }

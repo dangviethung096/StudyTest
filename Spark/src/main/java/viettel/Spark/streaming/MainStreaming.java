@@ -1,12 +1,9 @@
 package viettel.Spark.streaming;
 
 
-import java.sql.Timestamp;
-import java.util.UUID;
-
-
-import org.apache.spark.api.java.function.ForeachFunction;
+import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.ForeachWriter;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -14,8 +11,12 @@ import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder;
 import org.apache.spark.sql.streaming.StreamingQuery;
 import org.apache.spark.sql.streaming.StreamingQueryException;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import viettel.Spark.Cassandra.CassandraAPI;
-import viettel.Spark.DataObjects.HeartRateAvg;
+import viettel.Spark.DataObjects.HeartRate;
+
+import viettel.Spark.DataObjects.HeartRateRaw;
 import viettel.Spark.DataObjects.KafkaObject;
 
 public class MainStreaming {
@@ -27,13 +28,34 @@ public class MainStreaming {
 		
 		Dataset<Row> df = spark.readStream().format("kafka")
 											.option("kafka.bootstrap.servers", "10.55.123.60:9092")
-											.option("subscribe", "kafka.vitalsign.ecg")
+											.option("subscribe", "kafka.vitalsign.heart-rate")
 											.load();
 											
 		df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)");
 		
 		Dataset<KafkaObject> data = df.as(ExpressionEncoder.javaBean(KafkaObject.class));
 		// Convert value to json file
+		Dataset<HeartRate> heartRates = data.map(new MapFunction<KafkaObject, HeartRate>() {
+			
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public HeartRate call(KafkaObject value) throws Exception {
+				// Convert from json
+				ObjectMapper mapper = new ObjectMapper();
+				HeartRateRaw heartRateRaw = mapper.readValue(value.getValue(), HeartRateRaw.class);
+//				HeartRate heartRate = mapper.readValue(record.value(), HeartRate.class);
+				
+				HeartRate heartRate = new HeartRate();
+				heartRate.setCurrent_heart_rate(heartRateRaw.getHeart_rate());
+				
+				return heartRate;
+			}
+			
+		}, Encoders.bean(HeartRate.class));
 		
 		
 		
@@ -67,12 +89,47 @@ public class MainStreaming {
 //			}
 //		};
 		
+		ForeachWriter<HeartRate> writer = new ForeachWriter<HeartRate>() {
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void close(Throwable arg0) {
+				// TODO Auto-generated method stub
+				CassandraAPI.close();
+			}
+
+			@Override
+			public boolean open(long arg0, long arg1) {
+				// TODO Auto-generated method stub
+				try {
+					CassandraAPI.connect();
+				} catch (Exception ex) {
+					ex.printStackTrace();
+					System.err.println("Cassandra ERROR: cannot connect to db");
+					return false;
+				}
+				
+				return true;
+			}
+
+			@Override
+			public void process(HeartRate heartRate) {
+				// TODO Auto-generated method stub
+				CassandraAPI.getInstance().insertToDB(heartRate);
+			}
+			
+		};
+		
 		
 		// Convert to 
-		StreamingQuery query = data.writeStream()
-								   .outputMode("append")
-								   .format("console")
-								   .start();
+		StreamingQuery query = heartRates.writeStream()
+										 .foreach(writer)
+										 .outputMode("append")
+										 .format("console")
+										 .start();
 		
 		query.awaitTermination();
 	}

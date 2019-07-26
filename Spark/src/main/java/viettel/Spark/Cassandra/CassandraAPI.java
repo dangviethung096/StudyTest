@@ -1,7 +1,5 @@
 package viettel.Spark.Cassandra;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.Properties;
 import java.util.UUID;
@@ -17,6 +15,7 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 
+import viettel.Spark.DataObjects.HeartRate;
 import viettel.Spark.DataObjects.HeartRateAvg;
 
 //import viettel.DemoHDFS.BloodPressure.Entity.BloodPressureAvg;
@@ -42,16 +41,19 @@ public class CassandraAPI {
 	static {
 		try {
 			Properties pro = new Properties();
-			pro.load(Thread.currentThread().getContextClassLoader().getResourceAsStream("cassandra.properties"));
+//			pro.load(Thread.currentThread().getContextClassLoader().getResourceAsStream("cassandra.properties"));
+			pro.setProperty("cassandra.contactpoints", "10.55.123.52");
+			pro.setProperty("cassandra.port", "9042");
+			pro.setProperty("cassandra.user", "javservice");
+			pro.setProperty("cassandra.password", "123456");
+			pro.setProperty("cassandra.keyspace", "hdfs_test");
+			
 			node = pro.getProperty("cassandra.contactpoints");
 			port = Integer.parseInt(pro.getProperty("cassandra.port"));
 			username = pro.getProperty("cassandra.user");
 			pwd = pro.getProperty("cassandra.password");
 			keyspace = pro.getProperty("cassandra.keyspace");
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -155,6 +157,43 @@ public class CassandraAPI {
 					"update heart_rate_avg set heart_rate_avg = ?, heart_rate_max = ?, heart_rate_min = ? where id=? and day=?)");
 			BoundStatement bound = prepared.bind(heartRateAvg.getHeart_rate_avg(), heartRateAvg.getHeart_rate_max(),
 					heartRateAvg.getHeart_rate_min(), heartRateAvg.getId(), heartRateAvg.getDay());
+			session.execute(bound);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public HeartRate searchHrByDay(UUID uuid, Timestamp key) {
+		PreparedStatement prepared = session.prepare("select * from heart_rate_current where id = ? and day = ?");
+		BoundStatement bound = prepared.bind(uuid, key.getTime());
+		ResultSet rs = session.execute(bound);
+		Row row = rs.one();
+		if (row == null) {
+			return null;
+		} else {
+			HeartRate data = new HeartRate();
+			data.setId(row.getUUID("id"));
+			return data;
+		}
+	}
+
+	public void insertToDB(HeartRate heartRate) {
+		try {
+			PreparedStatement prepared = session.prepare(
+					"insert into heart_rate_avg (id, current_heart_rate, time) values(?,?,?)");
+			BoundStatement bound = prepared.bind(heartRate.getId(), heartRate.getCurrent_heart_rate()
+													, heartRate.getTime());
+			session.execute(bound);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void updateToDB(HeartRate heartRate) {
+		try {
+			PreparedStatement prepared = session.prepare(
+					"update heart_rate_current set current_heart_rate = ? where id=?)");
+			BoundStatement bound = prepared.bind(heartRate.getCurrent_heart_rate(), heartRate.getId());
 			session.execute(bound);
 		} catch (Exception e) {
 			e.printStackTrace();
