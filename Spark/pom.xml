@@ -45,18 +45,7 @@
 	    <artifactId>hadoop-client</artifactId>
 	    <version>3.1.2</version>
 	</dependency>
-	<!-- https://mvnrepository.com/artifact/com.datastax.oss/java-driver-core -->
-	<dependency>
-	    <groupId>com.datastax.oss</groupId>
-	    <artifactId>java-driver-core</artifactId>
-	    <version>4.1.0</version>
-	</dependency>
-	<!-- https://mvnrepository.com/artifact/com.datastax.cassandra/cassandra-driver-mapping -->
-	<dependency>
-	    <groupId>com.datastax.cassandra</groupId>
-	    <artifactId>cassandra-driver-mapping</artifactId>
-	    <version>3.7.2</version>
-	</dependency>
+
 	<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind -->
 	<dependency>
 	    <groupId>com.fasterxml.jackson.core</groupId>
@@ -64,6 +53,27 @@
 	    <version>2.9.9.1</version>
 	</dependency>
 	
+	<dependency>
+	    <groupId>viettel</groupId>
+	    <artifactId>DataObjects</artifactId>
+	    <version>0.0.1-SNAPSHOT</version>
+	</dependency>
+	
+	<!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+	<dependency>
+	    <groupId>com.google.guava</groupId>
+	    <artifactId>guava</artifactId>
+	    <version>19.0</version>
+	</dependency>
+	
+	<!-- https://mvnrepository.com/artifact/com.datastax.spark/spark-cassandra-connector -->
+	<dependency>
+	    <groupId>com.datastax.spark</groupId>
+	    <artifactId>spark-cassandra-connector_2.11</artifactId>
+	    <version>2.4.1</version>
+	</dependency>
+	
+
   </dependencies>
   
   <build>

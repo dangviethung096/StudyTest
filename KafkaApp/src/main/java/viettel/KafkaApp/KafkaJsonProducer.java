@@ -5,6 +5,9 @@ import java.util.Random;
 
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+
+import viettel.DataObjects.HeartRateRaw;
+
 import org.apache.kafka.clients.producer.KafkaProducer;;
 
 public class KafkaJsonProducer {
@@ -34,7 +37,7 @@ public class KafkaJsonProducer {
 				 
 				 producer.send(new ProducerRecord<String, String>("kafka.vitalsign.heart-rate",Integer.toString(i), heartRate.toString()));
 				 System.out.println("Sleep");
-				 Thread.sleep(1000L);
+				 Thread.sleep(3000L);
 			 }
 		 } catch (InterruptedException ie) {
 			 System.out.println("Error when sleep!");

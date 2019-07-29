@@ -1,4 +1,4 @@
-package viettel.Spark.DataObjects;
+package viettel.DataObjects;
 
 import java.sql.Timestamp;
 import java.util.UUID;

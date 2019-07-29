@@ -39,6 +39,12 @@
 	    <version>2.9.9.1</version>
 	</dependency>
 	
+	<dependency>
+	    <groupId>viettel</groupId>
+	    <artifactId>DataObjects</artifactId>
+	    <version>0.0.1-SNAPSHOT</version>
+	</dependency>
+	
   </dependencies>
   
   

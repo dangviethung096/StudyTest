@@ -13,6 +13,8 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import viettel.DataObjects.HeartRateRaw;
+
 public class KafkaJsonConsumer {
 	
 	KafkaConsumer<String, String> consumer;

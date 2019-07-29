@@ -39,7 +39,7 @@
 	    <artifactId>hadoop-hdfs</artifactId>
 	    <version>3.1.2</version>
 	</dependency>
-		
+	
   </dependencies>
   <build>
   	<plugins>

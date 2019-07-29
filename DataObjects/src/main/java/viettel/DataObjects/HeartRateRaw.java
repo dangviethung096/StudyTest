@@ -1,15 +1,15 @@
-package viettel.KafkaApp;
+package viettel.DataObjects;
 
 
 public class HeartRateRaw {
-
+	
 	private double heart_rate;
-
+	
 	@Override
 	public String toString() {
-		return "{ \"heart_rate\" :" + heart_rate + " }";
+		return "{ \"heart_rate\" :" + heart_rate + " }" ;
 	}
-
+	
 	public HeartRateRaw() {
 	}
 

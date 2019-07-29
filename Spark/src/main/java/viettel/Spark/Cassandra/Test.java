@@ -1,24 +1,26 @@
 package viettel.Spark.Cassandra;
 
 import java.sql.Timestamp;
+import java.util.Date;
+import java.util.Random;
 import java.util.UUID;
 
-import viettel.Spark.DataObjects.HeartRateAvg;
+import viettel.DataObjects.HeartRate;
+import viettel.DataObjects.HeartRateAvg;
 
 public class Test {
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		// connect
-		CassandraAPI.connect();
+		CassandraAPI.getInstance().connect();
 		
-		HeartRateAvg heartRateAvg = new HeartRateAvg();
-		heartRateAvg.setDay(new Timestamp(123456L));
-		heartRateAvg.setHeart_rate_avg(12.1);
-		heartRateAvg.setHeart_rate_max(15.3);
-		heartRateAvg.setHeart_rate_min(9.5);
-		heartRateAvg.setId(new UUID(12L, 33L));
+		Random random = new Random();
+		HeartRate heartRate = new HeartRate();
+		heartRate.setCurrentHeartRate(100*random.nextDouble());
+//		heartRate.setId(new UUID(random.nextLong(), random.nextLong()));
+		heartRate.setTime(new Timestamp(new Date().getTime()));
 		
-		CassandraAPI.getInstance().insertToDB(heartRateAvg);
+		CassandraAPI.getInstance().insertToDB(heartRate);
 		// close
-		CassandraAPI.close();
+		CassandraAPI.getInstance().close();
 	}
 }

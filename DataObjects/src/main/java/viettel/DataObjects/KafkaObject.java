@@ -1,4 +1,4 @@
-package viettel.Spark.DataObjects;
+package viettel.DataObjects;
 
 public class KafkaObject {
 	private String key;

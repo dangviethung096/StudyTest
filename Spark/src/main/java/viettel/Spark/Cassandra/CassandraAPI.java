@@ -15,68 +15,64 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 
-import viettel.Spark.DataObjects.HeartRate;
-import viettel.Spark.DataObjects.HeartRateAvg;
+import viettel.DataObjects.HeartRate;
+import viettel.DataObjects.HeartRateAvg;
 
-//import viettel.DemoHDFS.BloodPressure.Entity.BloodPressureAvg;
-//import viettel.DemoHDFS.HeartRate.Entity.HeartRateAvg;
-//import viettel.DemoHDFS.SPO2.Entity.Spo2Avg;
-//import viettel.DemoHDFS.Tempature.Entity.DataObject;
 
 public class CassandraAPI {
 	final static Logger logger = Logger.getLogger(CassandraAPI.class);
-	private static CassandraAPI instance = new CassandraAPI();
-	private static Cluster cluster;
-	private static Session session;
-	private static String node;
-	private static int port;
-	private static String username;
-	private static String pwd;
-	private static String keyspace;
+	private static CassandraAPI instance;
+	private Cluster cluster;
+	private Session session;
+	private String node;
+	private int port;
+	private String username;
+	private String pwd;
+	private String keyspace;
 	
 	private CassandraAPI() {
+		Properties pro = new Properties();
+//			pro.load(Thread.currentThread().getContextClassLoader().getResourceAsStream("cassandra.properties"));
+		pro.setProperty("cassandra.contactpoints", "10.55.123.52");
+		pro.setProperty("cassandra.port", "9042");
+		pro.setProperty("cassandra.user", "javservice");
+		pro.setProperty("cassandra.password", "123456");
+		pro.setProperty("cassandra.keyspace", "hdfs_test");
+		
+		node = pro.getProperty("cassandra.contactpoints");
+		port = Integer.parseInt(pro.getProperty("cassandra.port"));
+		username = pro.getProperty("cassandra.user");
+		pwd = pro.getProperty("cassandra.password");
+		keyspace = pro.getProperty("cassandra.keyspace");
 		
 	}
 	
-	static {
-		try {
-			Properties pro = new Properties();
-//			pro.load(Thread.currentThread().getContextClassLoader().getResourceAsStream("cassandra.properties"));
-			pro.setProperty("cassandra.contactpoints", "10.55.123.52");
-			pro.setProperty("cassandra.port", "9042");
-			pro.setProperty("cassandra.user", "javservice");
-			pro.setProperty("cassandra.password", "123456");
-			pro.setProperty("cassandra.keyspace", "hdfs_test");
-			
-			node = pro.getProperty("cassandra.contactpoints");
-			port = Integer.parseInt(pro.getProperty("cassandra.port"));
-			username = pro.getProperty("cassandra.user");
-			pwd = pro.getProperty("cassandra.password");
-			keyspace = pro.getProperty("cassandra.keyspace");
-			
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
 
-	public static void connect() {
+	public void connect() {
 		cluster = Cluster.builder().addContactPoint(node).withPort(port).withCredentials(username, pwd).build();
 		final Metadata metadata = cluster.getMetadata();
 		logger.info("Connected to cluster: " + metadata.getClusterName());
+		
 		for (final Host host : metadata.getAllHosts()) {
 			logger.info("Datacenter: " + host.getDatacenter() + "; Host: " + host.getAddress() + "; Rack: "
 					+ host.getRack());
 		}
+		
 		session = cluster.connect(keyspace);
 		// CassandraJavaUtil.javaFunctions(new JavaRDD<CassandraConnector>(null,
 		// null)).w
 	}
 
-	public static void close() {
-		if (session != null)
+	public void close() {
+		if (session != null) {
 			session.close();
-		if (cluster != null)
+			session = null;
+		}
+			
+		if (cluster != null) {
 			cluster.close();
+			cluster = null;
+		}
 	}
 
 //	public DataObject queryByDay(UUID id, Timestamp key) {
@@ -119,6 +115,10 @@ public class CassandraAPI {
 //	}
 
 	public static CassandraAPI getInstance() {
+		if (instance == null) {
+			instance = new CassandraAPI();
+		}
+		
 		return instance;
 	}
 
@@ -172,18 +172,21 @@ public class CassandraAPI {
 			return null;
 		} else {
 			HeartRate data = new HeartRate();
-			data.setId(row.getUUID("id"));
+			data.setId(row.getString("id"));
 			return data;
 		}
 	}
 
-	public void insertToDB(HeartRate heartRate) {
+	public void insertToDB(HeartRate heartRate) throws Exception {
 		try {
+			
 			PreparedStatement prepared = session.prepare(
-					"insert into heart_rate_avg (id, current_heart_rate, time) values(?,?,?)");
-			BoundStatement bound = prepared.bind(heartRate.getId(), heartRate.getCurrent_heart_rate()
+					"insert into heart_rate_current (id, current_heart_rate, time) values(?,?,?)");
+			BoundStatement bound = prepared.bind(UUID.fromString(heartRate.getId()), heartRate.getCurrentHeartRate()
 													, heartRate.getTime());
 			session.execute(bound);
+			
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -193,7 +196,7 @@ public class CassandraAPI {
 		try {
 			PreparedStatement prepared = session.prepare(
 					"update heart_rate_current set current_heart_rate = ? where id=?)");
-			BoundStatement bound = prepared.bind(heartRate.getCurrent_heart_rate(), heartRate.getId());
+			BoundStatement bound = prepared.bind(heartRate.getCurrentHeartRate(), heartRate.getId());
 			session.execute(bound);
 		} catch (Exception e) {
 			e.printStackTrace();

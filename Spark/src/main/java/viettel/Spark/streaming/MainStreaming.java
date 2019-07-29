@@ -1,6 +1,16 @@
 package viettel.Spark.streaming;
 
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.sql.Timestamp;
+import java.util.UUID;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
@@ -13,11 +23,10 @@ import org.apache.spark.sql.streaming.StreamingQueryException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import viettel.DataObjects.HeartRate;
+import viettel.DataObjects.HeartRateRaw;
+import viettel.DataObjects.KafkaObject;
 import viettel.Spark.Cassandra.CassandraAPI;
-import viettel.Spark.DataObjects.HeartRate;
-
-import viettel.Spark.DataObjects.HeartRateRaw;
-import viettel.Spark.DataObjects.KafkaObject;
 
 public class MainStreaming {
 	public static void main(String[] args) throws StreamingQueryException {
@@ -29,12 +38,17 @@ public class MainStreaming {
 		Dataset<Row> df = spark.readStream().format("kafka")
 											.option("kafka.bootstrap.servers", "10.55.123.60:9092")
 											.option("subscribe", "kafka.vitalsign.heart-rate")
-											.load();
-											
-		df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)");
+											.load()
+											.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)", 
+														"CAST(topic AS STRING)", "CAST(partition AS INT)", 
+														"CAST(offset AS LONG)","CAST(timestamp AS LONG)",
+														"CAST(timestampType AS INT)");
 		
+		
+		// Convert to kafka project
 		Dataset<KafkaObject> data = df.as(ExpressionEncoder.javaBean(KafkaObject.class));
-		// Convert value to json file
+		
+		// Convert value from json to HeartRate class
 		Dataset<HeartRate> heartRates = data.map(new MapFunction<KafkaObject, HeartRate>() {
 			
 			/**
@@ -45,50 +59,120 @@ public class MainStreaming {
 			@Override
 			public HeartRate call(KafkaObject value) throws Exception {
 				// Convert from json
-				ObjectMapper mapper = new ObjectMapper();
-				HeartRateRaw heartRateRaw = mapper.readValue(value.getValue(), HeartRateRaw.class);
-//				HeartRate heartRate = mapper.readValue(record.value(), HeartRate.class);
+				HeartRate heartRate  = new HeartRate();
+				try {
+					ObjectMapper mapper = new ObjectMapper();
+					HeartRateRaw heartRateRaw = mapper.readValue(value.getValue(), HeartRateRaw.class);
+					// Insert heart_rate
+					heartRate.setId(UUID.randomUUID().toString());
+					heartRate.setCurrentHeartRate(heartRateRaw.getHeart_rate());
+					heartRate.setTime(new Timestamp(value.getTimestamp()));
+					
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
 				
-				HeartRate heartRate = new HeartRate();
-				heartRate.setCurrent_heart_rate(heartRateRaw.getHeart_rate());
+				heartRate.setTime(new Timestamp(System.currentTimeMillis() ));
 				
 				return heartRate;
+				
 			}
 			
 		}, Encoders.bean(HeartRate.class));
 		
+	
+//		StreamingQuery writeToCassandra = MainStreaming.writeToCassandra(heartRates);
+		StreamingQuery writeToHDFS = MainStreaming.writeToHDFS(heartRates);
 		
+		// Wait to termination
+//		writeToCassandra.awaitTermination();
+		writeToHDFS.awaitTermination();
+	}
+	
+	public static StreamingQuery writeToHDFS(Dataset<HeartRate> heartRates) {
+		// Define foreach function for write to database
+		ForeachWriter<HeartRate> toHDFS = new ForeachWriter<HeartRate>() {
+			
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = 1L;
+			
+			private String outputFileStr = "/vht/medical/vitalsign/heart_rate.txt";
+			FSDataOutputStream out;
+			private final int BUFFER_SIZE = 1024;
+			
+			@Override
+			public void close(Throwable arg0) {
+				// TODO Auto-generated method stub
+				try {
+					if(out != null) {
+						out.close();
+						out = null;
+					}
+					
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			@Override
+			public boolean open(long arg0, long arg1) {
+				// TODO Auto-generated method stub
+				try {
+					// Get file system
+					Configuration conf = new Configuration();
+					FileSystem fs = FileSystem.get(conf);
+					Path outputFile = new Path(outputFileStr);
 		
-//		ForeachWriter<KafkaObject> writeToCassandra = new ForeachWriter<KafkaObject>() {
-//			
-//			@Override
-//			public void process(KafkaObject row) {
-//				// TODO Auto-generated method stub
-//				System.out.println("Receive value: heartRateAvg = " + row.getValue());
-//				// Set value from kafka object
-//				HeartRateAvg heartRateAvg = new HeartRateAvg();
-//				heartRateAvg.setDay(new Timestamp(row.getTimestamp()));
-//				heartRateAvg.setHeart_rate_avg(Double.parseDouble(row.getValue()));
-//				heartRateAvg.setHeart_rate_max(Double.parseDouble(row.getValue()));
-//				heartRateAvg.setHeart_rate_min(Double.parseDouble(row.getValue()));
-//				heartRateAvg.setId(new UUID(row.getTimestamp(), row.getTimestamp()));
-//				
-//				CassandraAPI.getInstance().insertToDB(heartRateAvg);
-//			}
-//			
-//			@Override
-//			public boolean open(long arg0, long arg1) {
-//				// TODO Auto-generated method stub
-//				return false;
-//			}
-//			
-//			@Override
-//			public void close(Throwable arg0) {
-//				// TODO Auto-generated method stub
-//				
-//			}
-//		};
+					// Check file and get output stream
+					if(fs.exists(outputFile)) {
+						out = fs.append(outputFile);
+					} else {
+						out = fs.create(outputFile);
+					}
+				
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					return false;
+				}
+				
+				return true;
+			}
+
+			@Override
+			public void process(HeartRate heartRate) {
+				// TODO Auto-generated method stub
+				
+				InputStream in = new ByteArrayInputStream(heartRate.toString().getBytes()); 
+				byte[] buffer = new byte[BUFFER_SIZE];
+				
+				try {
+					while(in.read(buffer) > 0) {
+						out.write(buffer);
+					}
+					
+					buffer = "\n".getBytes();
+					out.write(buffer);
+					
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+		};
 		
+		// Write stream
+		return heartRates.writeStream()
+						 .foreach(toHDFS)
+						 .start();
+	}
+	
+	public static StreamingQuery writeToCassandra(Dataset<HeartRate> heartRates) {
+		// Define foreach function for write to database
 		ForeachWriter<HeartRate> writer = new ForeachWriter<HeartRate>() {
 			/**
 			 * 
@@ -98,14 +182,14 @@ public class MainStreaming {
 			@Override
 			public void close(Throwable arg0) {
 				// TODO Auto-generated method stub
-				CassandraAPI.close();
+				CassandraAPI.getInstance().close();
 			}
 
 			@Override
 			public boolean open(long arg0, long arg1) {
 				// TODO Auto-generated method stub
 				try {
-					CassandraAPI.connect();
+					CassandraAPI.getInstance().connect();
 				} catch (Exception ex) {
 					ex.printStackTrace();
 					System.err.println("Cassandra ERROR: cannot connect to db");
@@ -118,19 +202,17 @@ public class MainStreaming {
 			@Override
 			public void process(HeartRate heartRate) {
 				// TODO Auto-generated method stub
-				CassandraAPI.getInstance().insertToDB(heartRate);
+				try {
+					CassandraAPI.getInstance().insertToDB(heartRate);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 			
 		};
-		
-		
-		// Convert to 
-		StreamingQuery query = heartRates.writeStream()
-										 .foreach(writer)
-										 .outputMode("append")
-										 .format("console")
-										 .start();
-		
-		query.awaitTermination();
+	
+		// Return value
+		return heartRates.writeStream().foreach(writer).start();
 	}
 }
